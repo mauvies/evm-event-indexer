@@ -1,0 +1,14 @@
+#!/bin/sh
+
+echo "Running quality checks..."
+
+npx @biomejs/biome check --staged --write
+
+if [ $? -ne 0 ]; then
+  echo "Error: Biome found issues that require manual fix."
+  exit 1
+fi
+
+git add .
+
+echo "✅ All checks passed! Proceeding with commit..."
