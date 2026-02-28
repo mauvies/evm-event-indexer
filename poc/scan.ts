@@ -1,6 +1,5 @@
-import SuperJSON from 'superjson';
 import { chainConfig } from './config';
-import { db, persistFeeCollectedEvents } from './db';
+import { persistFeeCollectedEvents } from './db';
 import { createFeesCollectorContract, createProvider, prepareFeeCollectedEvent } from './utils';
 
 main().catch((error) => {
@@ -23,5 +22,5 @@ async function main() {
   const events = prepareFeeCollectedEvent(chainConfig.chainId, contract, eventsLogs);
   await persistFeeCollectedEvents(events);
 
-  console.info(`Persisted ${events.length} events: ${SuperJSON.stringify(db)}`);
+  console.info(`Persisted ${events.length} events`);
 }
