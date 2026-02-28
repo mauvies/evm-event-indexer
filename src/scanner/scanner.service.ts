@@ -8,7 +8,7 @@ import { prepareFeeCollectedEvent } from './evm/events';
 
 const logger = createLogger('scanner');
 
-export async function runScanner(provider: JsonRpcProvider, chain: ChainConfig): Promise<void> {
+export async function scan(provider: JsonRpcProvider, chain: ChainConfig): Promise<void> {
   const contract = createFeesCollectorContract(chain.contractAddress, provider);
 
   // Get the last block scanned from the database

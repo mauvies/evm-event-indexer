@@ -1,0 +1,29 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: lifi-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  scanner:
+    build:
+      context: .
+      target: runner
+    container_name: lifi-scanner
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    env_file:
+      - .env 
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MONGO_URI: mongodb://mongo:27017/lifi-fees
+      CHAIN: ${CHAIN:-polygon}
+    command: ["node", "dist/scanner.js"]
+
+volumes:
+  mongo_data:

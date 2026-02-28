@@ -54,3 +54,16 @@ Tests covering the critical correctness guarantees: range boundary logic, idempo
 
 ### AI Support
 Used AI to set up the `mongodb-memory-server` integration and wire it correctly with Mongoose and Typegoose in the test environment.
+
+## 04. Dockerize scanner service
+
+### Context
+Containerized the scanner so it can run alongside MongoDB with a single `docker compose up` command.
+
+### Key Decisions
+
+* **Multi-stage Dockerfile:** Uses four stages (`base`, `deps`, `build`, `runner`). Dev dependencies are only present during `build`; the final image installs only production deps for a smaller footprint.
+* **Non-root user:** The runner stage switches to `USER node` to follow container security best practices.
+
+### Outcome
+Full local stack in one command. The same image can be deployed to production with only environment variable changes.

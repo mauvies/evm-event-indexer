@@ -1,16 +1,35 @@
 import mongoose from 'mongoose';
-import { env } from '../config/env';
-import { createLogger } from '../logger';
+import pRetry from 'p-retry';
+import { env } from '../config/env.js';
+import { createLogger } from '../logger.js';
 
 const logger = createLogger('db');
 
-export async function connectDatabase() {
+export async function connectDatabase(): Promise<void> {
   mongoose.set('strictQuery', true);
 
-  await mongoose.connect(env.MONGO_URI);
+  await pRetry(
+    async () => {
+      await mongoose.connect(env.MONGO_URI, { serverSelectionTimeoutMS: 5_000 });
+    },
+    {
+      retries: 5,
+      onFailedAttempt: (err) => {
+        logger.warn(
+          { attemptNumber: err.attemptNumber, retriesLeft: err.retriesLeft, err },
+          'MongoDB connection attempt failed, retrying',
+        );
+      },
+    },
+  );
 
   logger.info(
-    { mongoHost: mongoose.connection.host, mongoName: mongoose.connection.name },
+    { host: mongoose.connection.host, db: mongoose.connection.name },
     'Database connected',
   );
+}
+
+export async function disconnectDatabase(): Promise<void> {
+  await mongoose.disconnect();
+  logger.info('Database disconnected');
 }

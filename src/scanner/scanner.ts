@@ -1,13 +1,13 @@
 import { getChainConfig } from '../config/chains';
 import { env } from '../config/env';
-import { connectDatabase } from '../db/connection';
+import { connectDatabase, disconnectDatabase } from '../db/connection';
 import { createLogger } from '../logger';
 import { createProvider } from './evm/provider';
-import { runScanner } from './scanner.service';
+import { scan } from './scanner.service';
 
 const logger = createLogger('scanner');
 
-async function main() {
+async function run() {
   const chain = getChainConfig(env.CHAIN);
 
   logger.info({ chain: env.CHAIN, chainId: chain.chainId }, 'Initializing scanner');
@@ -16,10 +16,19 @@ async function main() {
 
   const provider = await createProvider(chain.rpcUrl, chain.chainId);
 
-  await runScanner(provider, chain);
+  await scan(provider, chain);
 }
 
-main().catch((err) => {
+async function shutdown() {
+  logger.info('Shutting down');
+  await disconnectDatabase();
+  process.exit(0);
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
+run().catch((err) => {
   logger.error({ err }, 'Scanner crashed');
   process.exitCode = 1;
 });
