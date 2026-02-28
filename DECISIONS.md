@@ -37,3 +37,20 @@ A first working version that scans, persists, and resumes reliably. Still needs 
 
 ### AI Support
 Used for fixing the tsx/decorator metadata incompatibility and build the desired MongoDB queries.
+
+## 03. Scanner v1 Tests
+
+### Context
+Added the first test suite covering the two core pieces of logic: block range calculation and scan cursor handling.
+
+### Key Decisions
+
+* **Vitest:** Chosen for its native ESM support, which matched the project setup without extra configuration.
+* **`mongodb-memory-server`:** Used for cursor integration tests, avoiding mocks that wouldn't catch actual query or index behaviour.
+* **Test scope:** Focused on `getNextRange` (pure unit tests, no dependencies) and the cursor functions `ensureCursor`/`updateCursor` (integration tests against the in-memory DB).
+
+### Outcome
+Tests covering the critical correctness guarantees: range boundary logic, idempotent cursor creation, and update behaviour.
+
+### AI Support
+Used AI to set up the `mongodb-memory-server` integration and wire it correctly with Mongoose and Typegoose in the test environment.

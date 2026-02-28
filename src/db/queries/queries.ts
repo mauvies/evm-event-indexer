@@ -1,9 +1,9 @@
 import type { AnyBulkWriteOperation } from 'mongoose';
-import type { ChainConfig } from '../config/chains';
-import { createLogger } from '../logger';
-import { FeesCollectedEventModel, ScanCursorModel } from './models';
-import type { FeesCollectedEvent } from './models/FeesCollectedEvent';
-import type { ScanCursor } from './models/ScanCursor';
+import type { ChainConfig } from '../../config/chains';
+import { createLogger } from '../../logger';
+import { FeesCollectedEventModel, ScanCursorModel } from '../models';
+import type { FeesCollectedEvent } from '../models/FeesCollectedEvent';
+import type { ScanCursor } from '../models/ScanCursor';
 
 const logger = createLogger('db');
 

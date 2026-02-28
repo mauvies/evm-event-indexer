@@ -1,6 +1,6 @@
 import type { JsonRpcProvider } from 'ethers';
 import type { ChainConfig } from '../config/chains';
-import { ensureCursor, persistFeeCollectedEvents, updateCursor } from '../db/queries';
+import { ensureCursor, persistFeeCollectedEvents, updateCursor } from '../db/queries/queries';
 import { createLogger } from '../logger';
 import { sleep } from '../utils';
 import { createFeesCollectorContract } from './evm/contract';
@@ -33,7 +33,7 @@ export async function runScanner(provider: JsonRpcProvider, chain: ChainConfig):
     const nextRange = getNextRange({
       lastBlock: cursor.lastBlock,
       safeHeadBlock,
-      maxBlockRange: chain.blockRange,
+      blockRange: chain.blockRange,
     });
 
     if (!nextRange) {
@@ -63,7 +63,7 @@ export async function runScanner(provider: JsonRpcProvider, chain: ChainConfig):
 interface NextRangeParams {
   lastBlock: number;
   safeHeadBlock: number;
-  maxBlockRange: number;
+  blockRange: number;
 }
 
 interface NextRange {
@@ -74,7 +74,7 @@ interface NextRange {
 export function getNextRange({
   lastBlock,
   safeHeadBlock,
-  maxBlockRange,
+  blockRange,
 }: NextRangeParams): NextRange | null {
   const fromBlock = lastBlock + 1;
 
@@ -82,7 +82,7 @@ export function getNextRange({
     return null;
   }
 
-  const toBlock = Math.min(fromBlock + maxBlockRange - 1, safeHeadBlock);
+  const toBlock = Math.min(fromBlock + blockRange - 1, safeHeadBlock);
 
   return { fromBlock, toBlock };
 }
