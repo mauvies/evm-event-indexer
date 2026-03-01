@@ -1,4 +1,5 @@
 import { pino, stdTimeFunctions } from 'pino';
+import pinoHttp from 'pino-http';
 import { env } from './config/env';
 
 export const logger = pino({
@@ -22,4 +23,19 @@ export const logger = pino({
 
 export function createLogger(domain: string) {
   return logger.child({ domain });
+}
+
+export function createHttpLogger() {
+  return pinoHttp({
+    logger,
+    customLogLevel: (_req, res, err) => {
+      if (err || res.statusCode >= 500) {
+        return 'error';
+      }
+      if (res.statusCode >= 400) {
+        return 'warn';
+      }
+      return 'info';
+    },
+  });
 }

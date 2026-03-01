@@ -5,7 +5,7 @@ I started with a lean PoC to validate the event-scanning "happy path" and identi
 
 ### Key Decisions
 
-* **Infrastructure Pivot:** Initial attempts using public endpoints (`polygon-rpc.com`) failed with `401/403 Unauthorized` errors. Switched to a dedicated provider to ensure reliability.
+* **Infrastructure Pivot:** Initial attempts using public endpoints (`polygon-rpc.com`) failed with `401/403 Unauthorized` errors, so I switched to a dedicated provider to ensure reliability.
 * **Rate-Limit Discovery:** Identified a strict **10-block limit** on `eth_getLogs` for Polygon's free tier on Alchemy. This dictated the move to a more flexible RPC (Ankr) and the need for a robust batching strategy.
 * **Tooling Selection:**
     * **Biome:** Faster, all-in-one toolchain for linting and formatting.
@@ -13,10 +13,10 @@ I started with a lean PoC to validate the event-scanning "happy path" and identi
     * **SuperJSON:** For safe `BigInt` serialization without precision loss.
 
 ### Outcome
-Identified critical infrastructure bottlenecks early. The project is now ready to transition from a single-pass script to a resilient, stateful service.
+Identified critical infrastructure bottlenecks early. The project is now ready to transition from a single-pass script to a robust, stateful service.
 
 ### AI Support
-Used AI to accelerate the debugging of RPC endpoint errors and refine technical documentation.
+Used AI to accelerate the debugging of RPC endpoint errors and refine the technical documentation format.
 
 ## 02. Scanner v1
 
@@ -67,3 +67,21 @@ Containerized the scanner so it can run alongside MongoDB with a single `docker 
 
 ### Outcome
 Full local stack in one command. The same image can be deployed to production with only environment variable changes.
+
+## 05. API v1
+
+### Context
+With the scanner persisting events into MongoDB, the next step was exposing that data through a REST API so integrators can query their fee collection history.
+
+### Key Decisions
+
+* **Express 5 + Zod Validation:** Chose Express for its maturity, simplicity and ecosystem. All query parameters are validated through a Zod schema, which keeps the handler clean and returns structured error messages.
+* **Cursor Based Pagination:** Instead of skip/offset pagination (which gets slower with large collections), the endpoint uses the document `_id` as a reference for the cursor. The compound index `(chainId, integrator, blockNumber, _id)` covers both the filter and the sort, so the query can be processed from the index alone.
+* **Error Handling:** A global error middleware catches `ZodError` and returns a `400` with the validation issues, while any unexpected error becomes a generic `500`. This avoids leaking internal details to the client.
+* **Integration Tests:** Tests run against `mongodb-memory-server` and covers the entire HTTP stack (validation, filtering, pagination) through `supertest`. No mocks, so the assertions reflect real Mongo behaviour.
+
+### Outcome
+An API that integrators can call to retrieve their fee events with filtering by block range, validation, and efficient pagination. Test coverage gives confidence that the query logic, edge cases, and error responses work as expected.
+
+### AI Support
+Used AI to validate the pagination approach, clean up the error handling with `createHttpLogger`, and return clear Zod validation errors.
