@@ -11,7 +11,7 @@
     "dev:scanner": "tsx watch --env-file .env src/scanner/scanner.ts",
     "dev:api": "tsx watch --env-file .env src/api/server.ts",
     "build": "tsup",
-    "start:scanner": "node --env-file .env dist/scanner.js",
+    "start:scanner": "node --env-file .env dist/scanner/scanner.js",
     "start:api": "node --env-file .env dist/api/server.js",
     "db:start": "docker run -d -p 27017:27017 --rm --name lifi-mongo-dev mongo:latest",
     "db:stop": "docker stop lifi-mongo-dev",
