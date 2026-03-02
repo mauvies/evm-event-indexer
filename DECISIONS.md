@@ -98,3 +98,17 @@ Use the existing Docker Compose setup to include the API service, so the full st
 
 ### Outcome
 Full local stack (database, scanner, API) in one `docker compose up`. Each service is independently restartable and shares the same build artifact.
+
+## 07. Overall improvemnts
+
+### Context
+The scanner main loop had no error handling, so a single RPC error would crash the process. Also, the scan interval and block range were very conservative relative to the Ankr rate limits.
+
+### Key Decisions
+
+* **Exponential Backoff on Failure:** Added a `try/catch` around the scan loop body with an `exponentialBackoff` utility that increases wait times from 1s up to 60s across consecutive failures. After `maxRetries` is reached the function throws, crashing the process so Docker can restart it cleanly from the last committed cursor.
+* **Tuned Chain Config for Ankr:** Adjusted `scanInterval` from `2000ms` to `200ms` and `blockRange` from `20` to `100`. With Ankr's guaranteed ~1800 reqs/min (~30 reqs/sec) and 2 RPC calls per iteration, this uses roughly a third of the budget while scanning ~50x faster.
+* **Mongo Healthcheck:** Added a `healthcheck` to the Mongo service with `depends_on: condition: service_healthy` on both `scanner` and `api`. Previously, `depends_on` only waited for the container to start, not for Mongo to accept connections.
+
+### Outcome
+The scanner now handles RPC errors automatically. If the provider goes down, the system waits and retries using a backoff strategy. Catching up with old blocks is also much faster because the rate-limit settings are now optimized.

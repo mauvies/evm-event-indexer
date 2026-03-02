@@ -2,7 +2,7 @@ import type { JsonRpcProvider } from 'ethers';
 import type { ChainConfig } from '../config/chains';
 import { ensureCursor, persistFeeCollectedEvents, updateCursor } from '../db/queries/queries';
 import { createLogger } from '../logger';
-import { sleep } from '../utils';
+import { exponentialBackoff, sleep } from '../utils';
 import { createFeesCollectorContract } from './evm/contract';
 import { prepareFeeCollectedEvent } from './evm/events';
 
@@ -25,38 +25,51 @@ export async function scan(provider: JsonRpcProvider, chain: ChainConfig): Promi
   );
 
   const eventFilter = contract.filters.FeesCollected();
+  let failures = 0;
 
   while (true) {
-    const latestBlock = await provider.getBlockNumber();
-    const safeHeadBlock = latestBlock - chain.confirmations;
+    try {
+      const latestBlock = await provider.getBlockNumber();
+      const safeHeadBlock = latestBlock - chain.confirmations;
 
-    const nextRange = getNextRange({
-      lastBlock: cursor.lastBlock,
-      safeHeadBlock,
-      blockRange: chain.blockRange,
-    });
+      const nextRange = getNextRange({
+        lastBlock: cursor.lastBlock,
+        safeHeadBlock,
+        blockRange: chain.blockRange,
+      });
 
-    if (!nextRange) {
-      // Wait until there is a valid range to scan
-      await sleep(chain.pollInterval);
-      continue;
+      if (!nextRange) {
+        // Wait until there is a valid range to scan
+        await sleep(chain.pollInterval);
+        continue;
+      }
+
+      const logs = await contract.queryFilter(eventFilter, nextRange.fromBlock, nextRange.toBlock);
+
+      if (logs.length > 0) {
+        const events = prepareFeeCollectedEvent(chain.chainId, contract, logs);
+        await persistFeeCollectedEvents(events);
+      }
+
+      logger.info(
+        { ...nextRange, found: logs.length, safeHeadBlock, latestBlock },
+        'Range scanned',
+      );
+
+      // Only move the cursor after the range is successfully persisted
+      cursor.lastBlock = nextRange.toBlock;
+      await updateCursor(cursor);
+
+      // To avoid hammering the RPC (rate limits, connection drops)
+      await sleep(chain.scanInterval);
+
+      failures = 0;
+    } catch (err) {
+      failures++;
+      logger.warn({ err, attempt: failures }, 'Scan iteration failed, retrying');
+      // In case the RPC is down, we want to wait for it to come back up before retrying
+      await exponentialBackoff(failures);
     }
-
-    const logs = await contract.queryFilter(eventFilter, nextRange.fromBlock, nextRange.toBlock);
-
-    if (logs.length > 0) {
-      const events = prepareFeeCollectedEvent(chain.chainId, contract, logs);
-      await persistFeeCollectedEvents(events);
-    }
-
-    logger.info({ ...nextRange, found: logs.length, safeHeadBlock, latestBlock }, 'Range scanned');
-
-    // Only move the cursor after the range is successfully persisted
-    cursor.lastBlock = nextRange.toBlock;
-    await updateCursor(cursor);
-
-    // To avoid hammering the RPC (rate limits, connection drops)
-    await sleep(chain.scanInterval);
   }
 }
 

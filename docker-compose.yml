@@ -3,8 +3,11 @@ services:
     image: mongo:7
     container_name: lifi-mongo
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - mongo_data:/data/db
 
@@ -14,7 +17,8 @@ services:
     container_name: lifi-scanner
     restart: unless-stopped
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     env_file:
       - .env 
     environment:
@@ -30,7 +34,8 @@ services:
     container_name: lifi-api
     restart: unless-stopped
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}
