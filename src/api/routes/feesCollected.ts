@@ -45,6 +45,7 @@ export const getFeesCollectedEvents: RequestHandler = async (
       // Sort by chainId, integrator, blockNumber descending and _id descending
       .sort({ chainId: 1, integrator: 1, blockNumber: -1, _id: -1 })
       .limit(query.limit)
+      .select('-__v')
       .lean();
 
     // Get the next cursor from the last document _id in the page

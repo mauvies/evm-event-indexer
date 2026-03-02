@@ -1,10 +1,10 @@
 import cors from 'cors';
-import express from 'express';
+import express, { type Express } from 'express';
 import { ZodError } from 'zod';
 import { createHttpLogger } from '../logger';
 import router from './routes/index';
 
-export function createApp() {
+export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');

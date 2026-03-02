@@ -85,3 +85,16 @@ An API that integrators can call to retrieve their fee events with filtering by 
 
 ### AI Support
 Used AI to validate the pagination approach, clean up the error handling with `createHttpLogger`, and return clear Zod validation errors.
+
+## 06. Dockerize API v1
+
+### Context
+Use the existing Docker Compose setup to include the API service, so the full stack (database, scanner, API) run with a single command.
+
+### Key Decisions
+
+* **Same image, different command:** Both `scanner` and `api` services reuse the same Dockerfile.
+* **Internal Mongo URI:** The compose environment overrides `MONGO_URI` to use Docker's internal DNS `mongo:27017`, so the connection string is correct regardless of the host `.env`.
+
+### Outcome
+Full local stack (database, scanner, API) in one `docker compose up`. Each service is independently restartable and shares the same build artifact.
