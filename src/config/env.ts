@@ -8,7 +8,7 @@ export const env = createEnv({
     LOG_LEVEL: z.string().default('info'),
     MONGO_URI: z.string().min(1),
     CHAIN: z.enum(chainKeysList),
-    API_PORT: z.coerce.number().int().positive(),
+    API_PORT: z.coerce.number().int().positive().default(3000),
   },
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,

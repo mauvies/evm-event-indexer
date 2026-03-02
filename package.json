@@ -2,14 +2,16 @@
   "name": "lifi-fees",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=24.x"
+  },
   "scripts": {
     "dev:poc": "tsx poc/scan.ts",
     "dev:scanner": "tsx --env-file .env src/scanner/scanner.ts",
     "dev:api": "tsx --env-file .env src/api/server.ts",
     "build": "tsup",
-    "start:scanner": "node --env-file .env dist/scanner/scanner.js",
+    "start:scanner": "node --env-file .env dist/scanner.js",
     "start:api": "node --env-file .env dist/api/server.js",
     "db:start": "docker run -d -p 27017:27017 --rm --name lifi-mongo-dev mongo:latest",
     "db:stop": "docker stop lifi-mongo-dev",
