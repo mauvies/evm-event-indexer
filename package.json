@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev:poc": "tsx poc/scan.ts",
-    "dev:scanner": "tsx --env-file .env src/scanner/scanner.ts",
-    "dev:api": "tsx --env-file .env src/api/server.ts",
+    "dev:scanner": "tsx watch --env-file .env src/scanner/scanner.ts",
+    "dev:api": "tsx watch --env-file .env src/api/server.ts",
     "build": "tsup",
     "start:scanner": "node --env-file .env dist/scanner.js",
     "start:api": "node --env-file .env dist/api/server.js",
