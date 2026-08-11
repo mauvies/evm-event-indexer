@@ -13,6 +13,9 @@
     "resolveJsonModule": true,
     "lib": ["ES2023"]
   },
-  "include": ["src"],
+  // poc/ is kept deliberately as a record of the exploration, so it is
+  // type-checked like the rest. It is not a build entry: tsup only emits
+  // src/scanner and src/api.
+  "include": ["src", "poc"],
   "exclude": ["node_modules", "dist"]
 }

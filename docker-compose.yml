@@ -24,6 +24,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MONGO_URI: mongodb://mongo:27017/lifi-fees
       CHAIN: ${CHAIN:-polygon}
+      RPC_URL: ${RPC_URL:?RPC_URL is required, see .env.example}
     command: ["node", "dist/scanner/scanner.js"]
 
   api:

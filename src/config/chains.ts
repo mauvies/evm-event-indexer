@@ -1,12 +1,7 @@
-import type { UnionToTuple } from 'type-fest';
+import type { ChainKey } from './chains.constants';
+import { env } from './env';
 
-export const chainKeys = {
-  polygon: 'polygon',
-} as const;
-
-export type ChainKey = keyof typeof chainKeys;
-
-export const chainKeysList = Object.keys(chainKeys) as UnionToTuple<keyof typeof chainKeys>;
+export { type ChainKey, chainKeys, chainKeysList } from './chains.constants';
 
 export interface ChainConfig {
   chainId: number;
@@ -22,8 +17,10 @@ export interface ChainConfig {
 export const chains = {
   polygon: {
     chainId: 137,
-    rpcUrl:
-      'https://rpc.ankr.com/polygon/4306d9aaf915e92fc4f6cf5217b77d6c0b20beef7a375702259bb6116919dee7',
+    // Supplied per deployment: the endpoint carries an API key and must not
+    // live in the repository. A single RPC_URL is enough because CHAIN selects
+    // one chain per scanner process.
+    rpcUrl: env.RPC_URL,
     contractAddress: '0xbD6C7B0d2f68c2b7805d88388319cfB6EcB50eA9',
     confirmations: 12,
 

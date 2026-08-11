@@ -1,11 +1,11 @@
 import { isAddress } from 'ethers';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { z } from 'zod';
-import { chains } from '../../config/chains.js';
+import { chainIds } from '../../config/chains.constants.js';
 import { FeesCollectedEventModel } from '../../db/models/index.js';
 
 const querySchema = z.object({
-  chainId: z.coerce.number().int().positive().default(chains.polygon.chainId),
+  chainId: z.coerce.number().int().positive().default(chainIds.polygon),
   integrator: z.custom<string>(
     (val) => typeof val === 'string' && isAddress(val),
     'Invalid address. Must be 0x-prefixed 20 bytes hex string.',
