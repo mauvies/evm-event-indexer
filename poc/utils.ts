@@ -27,7 +27,7 @@ interface ParsedFeeCollectedEvent {
   token: string;
   integrator: string;
   integratorFee: bigint;
-  lifiFee: bigint;
+  protocolFee: bigint;
 }
 
 export function parseFeeCollectedEventLog(
@@ -45,7 +45,7 @@ export function parseFeeCollectedEventLog(
     token: parsed.args._token as string,
     integrator: parsed.args._integrator as string,
     integratorFee: BigInt(parsed.args._integratorFee),
-    lifiFee: BigInt(parsed.args._lifiFee),
+    protocolFee: BigInt(parsed.args._lifiFee),
   };
 }
 

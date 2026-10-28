@@ -25,7 +25,7 @@ export async function persistFeeCollectedEvents(events: FeesCollectedEvent[]): P
           token: event.token,
           integrator: event.integrator,
           integratorFee: event.integratorFee,
-          lifiFee: event.lifiFee,
+          protocolFee: event.protocolFee,
         },
       },
       upsert: true,

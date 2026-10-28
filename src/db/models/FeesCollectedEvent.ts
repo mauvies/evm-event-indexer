@@ -36,5 +36,5 @@ export class FeesCollectedEvent {
   public integratorFee!: string;
 
   @prop({ type: () => String, required: true })
-  public lifiFee!: string;
+  public protocolFee!: string;
 }

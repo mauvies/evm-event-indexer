@@ -18,7 +18,7 @@ function seedEvent(overrides: Partial<FeesCollectedEvent> = {}) {
     token: '0x0000000000000000000000000000000000000000',
     integrator: INTEGRATOR,
     integratorFee: '1000',
-    lifiFee: '500',
+    protocolFee: '500',
     ...overrides,
   });
 }

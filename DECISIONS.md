@@ -1,114 +1,75 @@
-## 01. Exploratory PoC
+# Design Decisions
 
-### Context
-I started with a lean PoC to validate the event scanning "happy path" and identify real world RPC constraints before committing to the final architecture.
+The architectural choices behind the indexer and the trade-offs that shaped them.
 
-### Key Decisions
+## Scanner
 
-* **Infrastructure Pivot:** Initial attempts using public endpoints (`polygon-rpc.com`) failed with `401/403 Unauthorized` errors, so I switched to a dedicated provider to ensure reliability.
-* **Rate-Limit Discovery:** Identified a strict **10-block limit** on `eth_getLogs` for Polygon's free tier on Alchemy. This dictated the move to a more flexible RPC (Ankr) and the need for a robust batching strategy.
-* **Tooling Selection:**
-    * **Biome:** Faster, all-in-one toolchain for linting and formatting.
-    * **Husky:** Integrated to maintain code quality and standards via git hooks.
-    * **Superjson:** For safe `BigInt` serialization without precision loss.
+### Scan cursor
+A `ScanCursor` collection persists the last scanned block per chain and contract pair. The cursor only advances after a range's events are written, so a crash at any point resumes from the last committed block without losing events.
 
-### Outcome
-Identified critical infrastructure bottlenecks early. The project is now ready to transition from a happy path script to a robust, stateful service.
+### Idempotent writes
+Events are persisted via `bulkWrite` with `$setOnInsert` upserts keyed on `(chainId, txHash, logIndex)`. Rescanning a range after a crash produces no duplicates, which is what makes the cursor-after-write ordering safe.
 
-### AI Support
-Used AI to accelerate the debugging of RPC endpoint errors and refine the technical documentation format.
+### Block range batching
+The scanner advances in fixed-size block ranges, capped at the latest confirmed block (`latestBlock - confirmations`). Fixed ranges keep each `eth_getLogs` call within provider limits, and the confirmation depth keeps reorg-prone blocks out of the index.
 
-## 02. Scanner v1
+### Failure handling
+Each scan iteration runs inside a `try/catch`. Consecutive failures wait with exponential backoff, doubling up to a 60s cap, so a provider outage does not turn into a tight retry loop. After six consecutive failures the process exits and Docker restarts it from the last committed cursor, which is cleaner than retrying forever with possibly corrupted in-memory state.
 
-### Context
-Transitioned from the PoC script into a continuously and stateful running scanner service.
+### RPC provider
+An early prototype (`poc/`) validated the scanning path against real RPC constraints before the service architecture was settled:
 
-### Key Decisions
+* Public endpoints (`polygon-rpc.com`) rejected requests with `401/403`, so a dedicated provider is required.
+* Alchemy's free tier limits `eth_getLogs` on Polygon to 10 blocks per call, too narrow to backfill at a useful pace.
+* Ankr's free tier allows wider ranges and roughly 1800 requests per minute.
 
-* **Scan Cursor:** Introduced a `ScanCursor` collection to persist the last scanned block per chain-contract pair. The cursor only advances after events are successfully written, making the process crash safe and idempotent on restart.
-* **Idempotent Writes:** Events are persisted via `bulkWrite` with `$setOnInsert` upserts keyed on `(chainId, txHash, logIndex)`, so rescanning a range after a crash produces no duplicates.
-* **Block Range Batching:** The scanner advances in block ranges of fixed size, capped at the latest confirmed block (`latestBlock - confirmations`), to respect RPC rate limits and avoid reorg prone data.
-* **MongoDB in Docker:** Local development uses a single `docker run` command (`pnpm start:db`) to spin up a Mongo instance, keeping the setup zero-config.
-* **Chain Config:** I moved all the chain specific stuff (like RPC, batch sizes, and start blocks) into a central config. This makes it super easy to plug in a new network without touching the core scanner logic.
-* **Typegoose with Explicit Types:** Had to add explicit `type: () => Number/String` to all `@prop()` decorators to work around tsx/esbuild not supporting `emitDecoratorMetadata`.
+The Polygon config is tuned to Ankr: `blockRange` 100 and `scanInterval` 200ms. With two RPC calls per iteration that uses about a third of the request budget while backfilling about 50x faster than the initial conservative settings. The endpoint itself comes from `RPC_URL`, since it carries the provider key and does not belong in the repository.
 
-### Outcome
-A first working version that scans, persists, and resumes reliably. Still needs hardening for production and test coverage, which is the next step.
+### Chain config
+Everything chain-specific (contract address, start block, confirmations, block range, polling intervals) lives in a central config keyed by chain. Adding a network means adding a config entry, not touching the scanner loop. `CHAIN` selects one chain per scanner process.
 
-### AI Support
-Used for fixing the tsx/decorator metadata incompatibility and build the desired MongoDB queries.
+## Storage
 
-## 03. Scanner v1 Tests
+### Typegoose with explicit types
+Every `@prop()` declares `type: () => Number/String` explicitly, because tsx/esbuild does not support `emitDecoratorMetadata` and Typegoose cannot infer the types otherwise.
 
-### Context
-Added the first test suite covering the two core pieces of logic: block range calculation and scan cursor handling.
+### Fee amounts as strings
+`integratorFee` and `protocolFee` are `uint256` values on-chain, which exceed JavaScript's safe integer range. They are stored and returned as decimal strings so no precision is lost.
 
-### Key Decisions
+### Indexes
+A unique index on `(chainId, txHash, logIndex)` backs the idempotent upserts. A compound index on `(chainId, integrator, blockNumber, _id)` covers the API's filter and sort, so queries are served from the index.
 
-* **Vitest:** Chosen for its native ESM support, which matched the project setup without extra configuration.
-* **`mongodb-memory-server`:** Used for cursor integration tests, avoiding mocks that wouldn't catch actual query or index behaviour.
-* **Test scope:** Focused on `getNextRange` (pure unit tests, no dependencies) and the cursor functions `ensureCursor`/`updateCursor` (integration tests against the in-memory DB).
+## API
 
-### Outcome
-Tests covering the critical correctness guarantees: range boundary logic, idempotent cursor creation, and update behaviour.
+### Express 5 + Zod validation
+Express for its maturity, simplicity and ecosystem. All query parameters go through a Zod schema, which keeps the handler free of validation code and returns structured error messages.
 
-### AI Support
-Used AI to set up the `mongodb-memory-server` integration and wire it correctly with Mongoose and Typegoose in the test environment.
+### Cursor-based pagination
+Skip/offset pagination slows down as collections grow, so the endpoint pages by document `_id` instead. The `_id` in the compound index also breaks ties between events in the same block, keeping page boundaries stable.
 
-## 04. Dockerize scanner service
+### Error handling
+A global error middleware turns a `ZodError` into a `400` with the validation issues, and any other error into a generic `500`, so internal details never reach the client.
 
-### Context
-Containerized the scanner so it can run alongside MongoDB with a single `docker compose up` command.
+## Infrastructure
 
-### Key Decisions
+### Multi-stage Dockerfile
+Four stages (`base`, `deps`, `build`, `runner`). Dev dependencies exist only in `build`; the final image carries production dependencies only and runs as the non-root `node` user.
 
-* **Multi-stage Dockerfile:** Uses four stages (`base`, `deps`, `build`, `runner`). Dev dependencies are only present during `build`; the final image installs only production deps for a smaller footprint.
-* **Non-root user:** The runner stage switches to `USER node` to follow container security best practices.
+### One image, two services
+Scanner and API reuse the same image with different commands. Each service restarts independently while sharing a single build artifact.
 
-### Outcome
-Full local stack in one command. The same image can be deployed to production with only environment variable changes.
+### Compose networking and health
+The compose file overrides `MONGO_URI` to use Docker's internal DNS (`mongo:27017`), so the connection string is correct regardless of the host `.env`. A `healthcheck` on Mongo with `depends_on: condition: service_healthy` makes the scanner and API wait until Mongo accepts connections, not just until its container starts.
 
-## 05. API v1
+## Testing
 
-### Context
-With the scanner persisting events into MongoDB, the next step was exposing that data through a REST API so integrators can query their fee collection history.
+* **Vitest** for its native ESM support, which matches the project setup without extra configuration.
+* **`mongodb-memory-server`** for integration tests against a real Mongo engine. Mocks would not catch query or index behaviour.
+* **`supertest`** drives the full HTTP stack (validation, filtering, pagination), so API tests assert real responses.
 
-### Key Decisions
+Coverage focuses on the correctness guarantees: range boundaries, idempotent cursor creation and updates, and the API's filtering, pagination and error responses.
 
-* **Express 5 + Zod Validation:** Chose Express for its maturity, simplicity and ecosystem. All query parameters are validated through a Zod schema, which keeps the handler clean and returns structured error messages.
-* **Cursor Based Pagination:** Instead of skip/offset pagination (which gets slower with large collections), the endpoint uses the document `_id` as a reference for the cursor. The compound index `(chainId, integrator, blockNumber, _id)` covers both the filter and the sort, so the query can be processed from the index alone.
-* **Error Handling:** A global error middleware catches `ZodError` and returns a `400` with the validation issues, while any unexpected error becomes a generic `500`. This avoids leaking internal details to the client.
-* **Integration Tests:** Tests run against `mongodb-memory-server` and covers the entire HTTP stack (validation, filtering, pagination) through `supertest`. No mocks, so the assertions reflect real Mongo behaviour.
+## Tooling
 
-### Outcome
-An API that integrators can call to retrieve their fee events with filtering by block range, validation, and efficient pagination. Test coverage gives confidence that the query logic, edge cases, and error responses work as expected.
-
-### AI Support
-Used AI to validate the pagination approach, clean up the error handling with `createHttpLogger`, and return clear Zod validation errors.
-
-## 06. Dockerize API v1
-
-### Context
-Use the existing Docker Compose setup to include the API service, so the full stack (database, scanner, API) run with a single command.
-
-### Key Decisions
-
-* **Same image, different command:** Both `scanner` and `api` services reuse the same Dockerfile.
-* **Internal Mongo URI:** The compose environment overrides `MONGO_URI` to use Docker's internal DNS `mongo:27017`, so the connection string is correct regardless of the host `.env`.
-
-### Outcome
-Full local stack (database, scanner, API) in one `docker compose up`. Each service is independently restartable and shares the same build artifact.
-
-## 07. Overall improvemnts
-
-### Context
-The scanner main loop had no error handling, so a single RPC error would crash the process. Also, the scan interval and block range were very conservative relative to the Ankr rate limits.
-
-### Key Decisions
-
-* **Exponential Backoff on Failure:** Added a `try/catch` around the scan loop body with an `exponentialBackoff` utility that increases wait times from 1s up to 60s across consecutive failures. After `maxRetries` is reached the function throws, crashing the process so Docker can restart it cleanly from the last committed cursor.
-* **Tuned Chain Config for Ankr:** Adjusted `scanInterval` from `2000ms` to `200ms` and `blockRange` from `20` to `100`. With Ankr's guaranteed ~1800 reqs/min (~30 reqs/sec) and 2 RPC calls per iteration, this uses roughly a third of the budget while scanning ~50x faster.
-* **Mongo Healthcheck:** Added a `healthcheck` to the Mongo service with `depends_on: condition: service_healthy` on both `scanner` and `api`. Previously, `depends_on` only waited for the container to start, not for Mongo to accept connections.
-
-### Outcome
-The scanner now handles RPC errors automatically. If the provider goes down, the system waits and retries using a backoff strategy. Catching up with old blocks is also much faster because the rate-limit settings are now optimized.
+* **Biome** as a single fast toolchain for linting and formatting.
+* **Husky** runs Biome on staged files in a pre-commit hook.

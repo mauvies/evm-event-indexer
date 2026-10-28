@@ -5,7 +5,7 @@ interface ParsedFeeCollectedEvent {
   token: string;
   integrator: string;
   integratorFee: bigint;
-  lifiFee: bigint;
+  protocolFee: bigint;
 }
 
 export function parseFeeCollectedEventLog(
@@ -23,7 +23,8 @@ export function parseFeeCollectedEventLog(
     token: parsed.args._token as string,
     integrator: parsed.args._integrator as string,
     integratorFee: BigInt(parsed.args._integratorFee),
-    lifiFee: BigInt(parsed.args._lifiFee),
+    // The contract names the protocol share `_lifiFee`; stored under a neutral name
+    protocolFee: BigInt(parsed.args._lifiFee),
   };
 }
 
@@ -44,7 +45,7 @@ export function prepareFeeCollectedEvent(
       token: parsed.token,
       integrator: parsed.integrator,
       integratorFee: String(parsed.integratorFee),
-      lifiFee: String(parsed.lifiFee),
+      protocolFee: String(parsed.protocolFee),
     };
   });
 }

@@ -7,7 +7,7 @@ export interface FeeCollectedEvent {
   token: string;
   integrator: string;
   integratorFee: bigint;
-  lifiFee: bigint;
+  protocolFee: bigint;
 }
 
 export const db: FeeCollectedEvent[] = [];
