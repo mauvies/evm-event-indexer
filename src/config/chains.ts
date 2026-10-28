@@ -1,5 +1,5 @@
 import type { ChainKey } from './chains.constants';
-import { env } from './env';
+import { scannerEnv } from './scanner.env';
 
 export { type ChainKey, chainKeys, chainKeysList } from './chains.constants';
 
@@ -20,7 +20,7 @@ export const chains = {
     // Supplied per deployment: the endpoint carries an API key and must not
     // live in the repository. A single RPC_URL is enough because CHAIN selects
     // one chain per scanner process.
-    rpcUrl: env.RPC_URL,
+    rpcUrl: scannerEnv.RPC_URL,
     contractAddress: '0xbD6C7B0d2f68c2b7805d88388319cfB6EcB50eA9',
     confirmations: 12,
 

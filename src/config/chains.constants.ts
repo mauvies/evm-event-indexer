@@ -2,8 +2,9 @@ import type { UnionToTuple } from 'type-fest';
 
 /**
  * Kept separate from `chains.ts` so `env.ts` can validate `CHAIN` against this
- * list without importing the chain configs, which now depend on `env` for the
- * RPC URL. Keeping them in one file would create an import cycle.
+ * list without importing the chain configs. Those read the RPC URL from the
+ * scanner-only env, and loading them from `env.ts` would make every process
+ * require it.
  */
 export const chainKeys = {
   polygon: 'polygon',
