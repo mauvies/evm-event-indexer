@@ -23,7 +23,7 @@ An early prototype (`poc/`) validated the scanning path against real RPC constra
 * Alchemy's free tier limits `eth_getLogs` on Polygon to 10 blocks per call, too narrow to backfill at a useful pace.
 * Ankr's free tier allows wider ranges and roughly 1800 requests per minute.
 
-The Polygon config is tuned to Ankr: `blockRange` 100 and `scanInterval` 200ms. With two RPC calls per iteration that uses about a third of the request budget while backfilling about 50x faster than the initial conservative settings. The endpoint itself comes from `RPC_URL`, since it carries the provider key and does not belong in the repository.
+The Polygon config is tuned to Ankr: `blockRange` 100 and `scanInterval` 200ms. With two RPC calls per iteration that uses about a third of the request budget while backfilling about 50x faster than the initial conservative settings. The endpoint itself comes from `RPC_URL`, since it carries the provider key and does not belong in the repository. Only the scanner validates it, so the API boots without RPC credentials it never uses.
 
 ### Chain config
 Everything chain-specific (contract address, start block, confirmations, block range, polling intervals) lives in a central config keyed by chain. Adding a network means adding a config entry, not touching the scanner loop. `CHAIN` selects one chain per scanner process.

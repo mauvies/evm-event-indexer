@@ -18,14 +18,14 @@ Scanner and API run as separate processes from the same image, so each can be de
 
 Copy `.env.example` to `.env` and set `RPC_URL` to an RPC endpoint for the target chain.
 
-| Variable    | Description                                   | Default   |
-| ----------- | --------------------------------------------- | --------- |
-| `RPC_URL`   | JSON-RPC endpoint, including any provider key | —         |
-| `CHAIN`     | Chain to index (see `src/config/chains.ts`)   | —         |
-| `MONGO_URI` | MongoDB connection string                     | —         |
-| `API_PORT`  | Port the API listens on                       | `3000`    |
-| `LOG_LEVEL` | Pino log level                                | `info`    |
-| `NODE_ENV`  | `development`, `test` or `production`         | —         |
+| Variable    | Description                                            | Default |
+| ----------- | ------------------------------------------------------ | ------- |
+| `RPC_URL`   | JSON-RPC endpoint with any provider key (scanner only) | —       |
+| `CHAIN`     | Chain to index (see `src/config/chains.ts`)            | —       |
+| `MONGO_URI` | MongoDB connection string                              | —       |
+| `API_PORT`  | Port the API listens on                                | `3000`  |
+| `LOG_LEVEL` | Pino log level                                         | `info`  |
+| `NODE_ENV`  | `development`, `test` or `production`                  | —       |
 
 ### Docker (recommended)
 
