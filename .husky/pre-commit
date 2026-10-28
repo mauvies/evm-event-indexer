@@ -2,7 +2,7 @@
 
 echo "Running quality checks..."
 
-npx @biomejs/biome check --staged --write
+npx @biomejs/biome check --staged --write --no-errors-on-unmatched
 
 if [ $? -ne 0 ]; then
   echo "Error: Biome found issues that require manual fix."
